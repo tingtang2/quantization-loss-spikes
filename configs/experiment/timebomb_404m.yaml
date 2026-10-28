@@ -1,0 +1,19 @@
+# @package _global_
+# Long-horizon time-bomb setup at 404M scale.
+
+num_tokens_train: 96_000_000_000
+num_tokens_valid: 20_000_000
+log_every_tokens: 1_000_000
+eval_every_steps: 100
+
+model:
+  rmsnorm_use_scale: true
+  use_qk_norm: true
+
+opt:
+  batch_size: 128  # 131,072 tokens per optimizer step at sequence length 1,024
+  peak_lr: 0.01
+  weight_decay: 0.0
+  b1: 0.9
+  b2: 0.95
+  eps: 1e-8

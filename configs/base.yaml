@@ -1,0 +1,138 @@
+defaults:
+  - _self_
+  - override hydra/hydra_logging: disabled
+  - override hydra/job_logging: disabled
+
+# Paper-wide defaults. Model size, dataset, experiment, precision, and method
+# are selected explicitly from the corresponding Hydra config groups.
+seed: 0
+use_single_vm_among_multiple: false
+multihost_batch_sharding: false
+ds_path: null
+tokens_params_ratio: null
+num_tokens_train: null
+num_tokens_valid: 20_000_000
+
+log_every_tokens: 1_000_000
+log_metrics_per_step: false
+log_metrics_per_step_full: false
+log_effective_lr_every_steps: -1
+eval_every_steps: 100
+wandb_project: loss-spikes
+wandb_mode: disabled
+run_name: null
+
+num_tp_devices: 1
+log_output_embedding_group_metrics: false
+log_logit_grad_stats: false
+log_logit_grad_scaling_stats: false
+log_lm_head_diagnostic_metrics: false
+log_lm_head_quantization_error_metrics: false
+log_parameter_update_metrics: false
+log_head_scale_metrics: false
+log_final_norm_channel_metrics: false
+log_high_confidence_error_metrics: false
+log_final_norm_activation_grad_metrics: false
+
+model:
+  D: null
+  L: null
+  H: 128
+  F: ${mul:4, ${model.D}}
+  N: ${floordiv:${model.D}, ${model.H}}
+  T: null
+  V: null
+  activ_dtype: bfloat16
+  # BF16 mixed keeps FP32 master weights but uses a BF16 LM-head GEMM.
+  lm_head_dtype: bfloat16
+  lm_head_param_dtype: float32
+  data_param_sharding: true
+  use_flash_attn: true
+  use_qk_norm: true
+  rmsnorm_use_scale: true
+  qk_norm_disable_scale: false
+  out_ln_use_scale: null
+
+opt:
+  batch_size: 256
+  peak_lr: 0.1
+  warmup_frac: 0.05
+  lr_schedule:
+    exponent: 1.0
+    end_value: 0.0
+  b1: 0.9
+  b2: 0.95
+  b2_cosine_anneal:
+    enabled: false
+    final_b2: 0.95
+  weight_decay: 0.0
+  eps: 1e-8
+  clip_by_global_norm: 1.0
+  use_z_loss: false
+  mucentering: false
+  exclude_input_embedding_weight_decay: false
+
+  default_optimizer:
+    type: adamw
+    muon:
+      peak_lr: ${opt.peak_lr}
+      beta: 0.95
+      ns_steps: 5
+      eps: ${opt.eps}
+      weight_decay: ${opt.weight_decay}
+      mu_dtype: null
+      nesterov: true
+      adaptive: false
+      consistent_rms: null
+
+  input_embedding_optimizer:
+    type: adamw
+    momentum: 0.9
+    nesterov: false
+
+  lm_head_optimizer:
+    type: adamw
+    peak_lr: ${opt.peak_lr}
+    momentum: 0.9
+    nesterov: false
+    b1: ${opt.b1}
+
+  # Optional controls for row-centering and high-loss-token masking.
+  lm_head_gradient_centering: off
+  lm_head_weighted_columnwise_gradient_centering: off
+  loss_skip:
+    enabled: false
+    warmup_steps: 1000
+    window_size: 1000
+    min_history: 256
+    z_soft: 5.0
+    z_hard: 8.0
+    soft_weight: 1.0
+    eps: 1e-6
+    use_log_loss: false
+    abs_hard: null
+
+checkpoint:
+  turn_on: false
+  workdir: checkpoints
+  gcp_bucket: null
+  load_path: null
+  step_prefix: null
+  checkpoint_every_steps: 2000
+  max_to_keep: 5
+  start_step: null
+  checkpoint_steps: null
+
+diagnostics:
+  end_step: null
+  save_raw_losses: false
+  collect_qkv_stats: false
+  spike_analysis_top_k: 15
+  spike_analysis_min_count: 5
+
+profiling:
+  enabled: false
+  start_step: 5
+  num_steps: 10
+  log_dir: ""
+  create_perfetto_trace: true

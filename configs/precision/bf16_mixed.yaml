@@ -1,0 +1,7 @@
+# @package _global_
+# BF16 LM-head compute with FP32 master weights.
+
+model:
+  activ_dtype: bfloat16
+  lm_head_dtype: bfloat16
+  lm_head_param_dtype: float32

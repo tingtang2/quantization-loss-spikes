@@ -1,0 +1,10 @@
+# @package _global_
+# Subtract each token row's feature mean after AdamW.
+
+opt:
+  use_z_loss: false
+  mucentering: false
+  lm_head_gradient_centering: post
+  lm_head_optimizer:
+    type: adamw
+    peak_lr: ${opt.peak_lr}

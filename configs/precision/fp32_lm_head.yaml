@@ -1,0 +1,7 @@
+# @package _global_
+# The transformer remains BF16; the final norm and LM head run in FP32.
+
+model:
+  activ_dtype: bfloat16
+  lm_head_dtype: float32
+  lm_head_param_dtype: float32

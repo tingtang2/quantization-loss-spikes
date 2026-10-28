@@ -1,0 +1,16 @@
+# @package _global_
+
+ds_path: '~/datasets/fineweb100B_gpt2.bin'
+
+model:
+  V: 50257
+
+
+output_embedding_groups:
+  - name: most_frequent
+    token_ids: [13, 11, 262, 198, 290]
+  - name: least_frequent
+    token_ids: [39253, 50216, 30212, 29164, 30897]
+  - name: average_frequency
+    token_ids: [11524, 10834, 12490, 13229, 10759]
+

@@ -1,0 +1,11 @@
+# @package _global_
+# Use longer AdamW first-moment memory on the LM head.
+
+opt:
+  use_z_loss: false
+  mucentering: false
+  lm_head_gradient_centering: off
+  lm_head_optimizer:
+    type: adamw_b1
+    peak_lr: ${opt.peak_lr}
+    b1: 0.99

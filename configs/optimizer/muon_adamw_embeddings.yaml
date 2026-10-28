@@ -1,0 +1,10 @@
+# @package opt
+
+default_optimizer:
+  type: muon
+
+input_embedding_optimizer:
+  type: adamw
+
+lm_head_optimizer:
+  type: adamw

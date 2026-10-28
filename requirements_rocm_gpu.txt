@@ -1,0 +1,2 @@
+-r requirements-common.txt
+jax[rocm7-local]==0.8.1

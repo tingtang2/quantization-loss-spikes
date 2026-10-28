@@ -1,0 +1,12 @@
+# @package _global_
+# Paper default: SGD with momentum on the LM head, AdamW elsewhere.
+
+opt:
+  use_z_loss: false
+  mucentering: false
+  lm_head_gradient_centering: off
+  lm_head_optimizer:
+    type: sgd_momentum
+    peak_lr: 0.3
+    momentum: 0.99
+    nesterov: false

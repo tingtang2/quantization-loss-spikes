@@ -1,0 +1,11 @@
+# @package _global_
+# train.py uses the paper coefficient lambda = 1e-4.
+
+opt:
+  use_z_loss: true
+  mucentering: false
+  lm_head_gradient_centering: off
+  lm_head_optimizer:
+    type: adamw
+    peak_lr: ${opt.peak_lr}
+    b1: ${opt.b1}

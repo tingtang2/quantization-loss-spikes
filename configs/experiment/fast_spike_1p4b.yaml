@@ -1,0 +1,19 @@
+# @package _global_
+# Parameterless-RMSNorm fast-spike setup at 1.4B scale.
+
+num_tokens_train: 10_000_000_000
+num_tokens_valid: 20_000_000
+log_every_tokens: 1_000_000
+eval_every_steps: 100
+
+model:
+  rmsnorm_use_scale: false
+  use_qk_norm: true
+
+opt:
+  batch_size: 128  # 262,144 tokens per optimizer step at sequence length 2,048
+  peak_lr: 0.07
+  weight_decay: 1e-4
+  b1: 0.9
+  b2: 0.95
+  eps: 1e-8
