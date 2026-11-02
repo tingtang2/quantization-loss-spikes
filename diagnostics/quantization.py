@@ -8,6 +8,7 @@ from flax import nnx
 
 import model as model_lib
 import utils
+from training import cross_entropy as cross_entropy_lib
 
 
 @partial(
@@ -30,7 +31,9 @@ def get_output_logit_and_optional_metrics(
     model = nnx.merge(model_graphdef, model_state)
     logits, final_norm_input = model(x, return_final_norm_input_with_logits=True)
     logits = logits[:, :-1].astype(jnp.float32)
-    log_probs = jax.nn.log_softmax(logits, axis=-1)
+    log_probs = cross_entropy_lib.select_log_softmax(
+        logits, model.use_fixed_softmax
+    )
     probs = jnp.exp(log_probs)
     entropy = -jnp.mean(jnp.sum(probs * log_probs, axis=-1))
     output_stats = (logits.mean(), utils.get_l2_norm(logits), logits.std(), entropy)
@@ -89,19 +92,27 @@ def get_output_logit_and_optional_metrics(
             reference_l2, jnp.asarray(1e-30, dtype=jnp.float32)
         )
 
-        reference_log_probs = jax.nn.log_softmax(shadow_logits, axis=-1)
+        reference_log_probs = cross_entropy_lib.select_log_softmax(
+            shadow_logits, model.use_fixed_softmax
+        )
         reference_probs = jnp.exp(reference_log_probs)
         kl_per_token = jnp.sum(
             reference_probs * (reference_log_probs - log_probs), axis=-1
         )
 
         targets = x[:, 1:]
-        native_losses = -jnp.take_along_axis(
-            log_probs, targets[..., None], axis=-1
-        ).squeeze(-1)
-        reference_losses = -jnp.take_along_axis(
-            reference_log_probs, targets[..., None], axis=-1
-        ).squeeze(-1)
+        if model.use_fixed_softmax:
+            native_losses = cross_entropy_lib.fixed_cross_entropy(logits, targets)
+            reference_losses = cross_entropy_lib.fixed_cross_entropy(
+                shadow_logits, targets
+            )
+        else:
+            native_losses = -jnp.take_along_axis(
+                log_probs, targets[..., None], axis=-1
+            ).squeeze(-1)
+            reference_losses = -jnp.take_along_axis(
+                reference_log_probs, targets[..., None], axis=-1
+            ).squeeze(-1)
 
         metrics.update({
             'lm_head_quantization/fp32_shadow_logit_std': jnp.std(shadow_logits),

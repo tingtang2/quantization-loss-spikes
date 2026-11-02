@@ -7,6 +7,7 @@ import jax.numpy as jnp
 from flax import nnx
 
 import utils
+from training import cross_entropy as cross_entropy_lib
 
 
 @partial(jax.jit, static_argnames=('model_graphdef'))
@@ -34,7 +35,9 @@ def get_mean_and_norm_output_logit(model_state, model_graphdef, x): # [B, T]
     model = nnx.merge(model_graphdef, model_state)
     logits = model(x) # [B, T, V]
     logits = logits[:, :-1].astype(jnp.float32)
-    log_probs = jax.nn.log_softmax(logits, axis=-1)
+    log_probs = cross_entropy_lib.select_log_softmax(
+        logits, model.use_fixed_softmax
+    )
     probs = jnp.exp(log_probs)
     entropy = -jnp.mean(jnp.sum(probs * log_probs, axis=-1))
     return logits.mean(), utils.get_l2_norm(logits), logits.std(), entropy
@@ -48,10 +51,9 @@ def get_lm_head_diagnostic_metrics(model_state, model_graphdef, x): # [B, T]
     targets = x[:, 1:]
 
     def mean_cross_entropy(logits_arg):
-        log_probs = jax.nn.log_softmax(logits_arg, axis=-1)
-        losses = -jnp.take_along_axis(
-            log_probs, targets[..., None], axis=-1
-        ).squeeze(-1)
+        losses = cross_entropy_lib.select_cross_entropy(
+            logits_arg, targets, model.use_fixed_softmax
+        )
         return losses.mean()
 
     # Autodiff returns (p - y) / num_tokens because the loss is a mean. Undo
@@ -115,8 +117,9 @@ def get_logit_grad_sum_stats(model_state, model_graphdef, x): # [B, T]
     logits = model(x).astype(jnp.float32) # [B, T, V]
 
     def loss_from_logits(l):
-        log_probs = jax.nn.log_softmax(l, axis=-1)
-        losses = -jnp.take_along_axis(log_probs, y[..., None], axis=-1).squeeze(-1)
+        losses = cross_entropy_lib.select_cross_entropy(
+            l, y, model.use_fixed_softmax
+        )
         losses = losses[:, :-1]
         return losses.mean()
 
@@ -142,15 +145,24 @@ def get_logit_grad_scaling_stats(model_state, model_graphdef, x): # [B, T]
     denom = jnp.maximum(mask.sum(), 1.0)
 
     def loss_from_logits(l):
-        log_probs = jax.nn.log_softmax(l, axis=-1)
-        losses = -jnp.take_along_axis(log_probs, y[..., None], axis=-1).squeeze(-1)
+        losses = cross_entropy_lib.select_cross_entropy(
+            l, y, model.use_fixed_softmax
+        )
         return (losses * mask).sum() / denom
 
     grad_auto = jax.grad(loss_from_logits)(logits)
 
-    probs = jax.nn.softmax(logits, axis=-1)
     one_hot = jax.nn.one_hot(y, logits.shape[-1], dtype=logits.dtype)
-    grad_closed_form = (probs - one_hot) * mask[..., None] / denom
+    if model.use_fixed_softmax:
+        probs = cross_entropy_lib.fixed_softmax(logits)
+        target_mask = one_hot.astype(jnp.bool_)
+        non_target_probs = jnp.where(target_mask, 0.0, probs)
+        target_grad = -jnp.sum(non_target_probs, axis=-1, keepdims=True)
+        grad_closed_form = jnp.where(target_mask, target_grad, probs)
+        grad_closed_form = grad_closed_form * mask[..., None] / denom
+    else:
+        probs = jax.nn.softmax(logits, axis=-1)
+        grad_closed_form = (probs - one_hot) * mask[..., None] / denom
 
     grad_diff = grad_auto - grad_closed_form
     auto_norm = utils.get_l2_norm(grad_auto)

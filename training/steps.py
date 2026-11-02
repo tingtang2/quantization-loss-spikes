@@ -8,6 +8,7 @@ from flax import nnx
 
 import model as model_lib
 from diagnostics.parameter_updates import compute_parameter_update_metrics
+from training import cross_entropy as cross_entropy_lib
 from training.losses import (
     _apply_tanh_soft_cap,
     _build_loss_skip_weights,
@@ -126,8 +127,12 @@ def get_final_norm_activation_grad_metrics(
         def chunk_statistics(chunk):
             hidden, targets, valid_mask = chunk
             logits = model.token_embed_out.attend(hidden).astype(jnp.float32)
-            log_probs = jax.nn.log_softmax(logits, axis=-1)
-            losses = -jnp.take_along_axis(log_probs, targets[:, None], axis=-1).squeeze(-1)
+            losses = cross_entropy_lib.select_cross_entropy(
+                logits, targets, model.use_fixed_softmax
+            )
+            log_probs = cross_entropy_lib.select_log_softmax(
+                logits, model.use_fixed_softmax
+            )
             mask = valid_mask.astype(jnp.float32)
 
             if objective_mode == 'skip':

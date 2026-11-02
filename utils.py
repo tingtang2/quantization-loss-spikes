@@ -9,6 +9,8 @@ import numpy as np
 from typing import NamedTuple
 from omegaconf import DictConfig, open_dict
 
+from training import cross_entropy as cross_entropy_lib
+
 
 def flatten_dict(d, prefix=None, sep='.'):
     if isinstance(d, Mapping):
@@ -1567,8 +1569,9 @@ def _per_token_loss_sum_and_count(model_state, model_graphdef, x, vocab_size):
     model = nnx.merge(model_graphdef, model_state)
     y = jnp.roll(x, -1, axis=1)
     logits = model(x, return_qkv=False).astype(jnp.float32)
-    log_probs = jax.nn.log_softmax(logits, axis=-1)
-    losses = -jnp.take_along_axis(log_probs, y[..., None], axis=-1).squeeze(-1)
+    losses = cross_entropy_lib.select_cross_entropy(
+        logits, y, model.use_fixed_softmax
+    )
 
     # remove wraparound last position
     losses = losses[:, :-1]
@@ -1590,8 +1593,9 @@ def _per_batch_grad_W_U(model_state, model_graphdef, x):
         model = nnx.merge(model_graphdef, state)
         y = jnp.roll(x, -1, axis=1)
         logits = model(x, return_qkv=False).astype(jnp.float32)
-        log_probs = jax.nn.log_softmax(logits, axis=-1)
-        losses = -jnp.take_along_axis(log_probs, y[..., None], axis=-1).squeeze(-1)
+        losses = cross_entropy_lib.select_cross_entropy(
+            logits, y, model.use_fixed_softmax
+        )
         return losses[:, :-1].sum()
 
     grads = jax.grad(loss_fn)(model_state)

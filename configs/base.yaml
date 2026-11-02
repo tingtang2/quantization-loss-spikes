@@ -46,6 +46,7 @@ model:
   # BF16 mixed keeps FP32 master weights but uses a BF16 LM-head GEMM.
   lm_head_dtype: bfloat16
   lm_head_param_dtype: float32
+  use_fixed_softmax: false
   data_param_sharding: true
   use_flash_attn: true
   use_qk_norm: true

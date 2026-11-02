@@ -34,6 +34,7 @@ from configs import resolver_setup
 import data
 import model as model_lib
 import utils
+from training import cross_entropy as cross_entropy_lib
 
 
 class _StandardNameFormatHNS(step_lib._StandardNameFormat):
@@ -70,8 +71,9 @@ def batch_loss_stats(model_state, model_graphdef, x):
     model = nnx.merge(model_graphdef, model_state)
     y = jnp.roll(x, -1, axis=1)
     logits = model(x).astype(jnp.float32)
-    log_probs = jax.nn.log_softmax(logits, axis=-1)
-    token_losses = -jnp.take_along_axis(log_probs, y[..., None], axis=-1).squeeze(-1)
+    token_losses = cross_entropy_lib.select_cross_entropy(
+        logits, y, model.use_fixed_softmax
+    )
     token_losses = token_losses[:, :-1]
     per_example_loss = token_losses.mean(axis=1)
     batch_mean_loss = per_example_loss.mean()

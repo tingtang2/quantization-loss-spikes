@@ -7,6 +7,7 @@ import jax.numpy as jnp
 from flax import nnx
 
 import utils
+from training import cross_entropy as cross_entropy_lib
 
 
 @partial(jax.jit, static_argnames=('model_graphdef', 'collect_qkv_stats'))
@@ -20,8 +21,9 @@ def loss_fn(model_state, model_graphdef, x, collect_qkv_stats: bool = True): # [
         qkv_dict = None
 
     logits = logits.astype(jnp.float32)
-    log_probs = jax.nn.log_softmax(logits, axis=-1)
-    losses = -jnp.take_along_axis(log_probs, y[..., None], axis=-1).squeeze(-1)
+    losses = cross_entropy_lib.select_cross_entropy(
+        logits, y, model.use_fixed_softmax
+    )
     losses = losses[:, :-1]
 
     if collect_qkv_stats:
@@ -41,8 +43,9 @@ def loss_fn_z_loss(model_state, model_graphdef, x, collect_qkv_stats: bool = Tru
     else:
         logits = model(x, return_qkv=False) # [B, T, V]
         qkv_dict = None
-    log_probs = jax.nn.log_softmax(logits.astype(jnp.float32), axis=-1)
-    losses = -jnp.take_along_axis(log_probs, y[..., None], axis=-1).squeeze(-1)
+    losses = cross_entropy_lib.select_cross_entropy(
+        logits.astype(jnp.float32), y, model.use_fixed_softmax
+    )
     losses = losses[:, :-1]
 
     z = jax.nn.logsumexp(logits[:, :-1].astype(jnp.float32), axis=-1)  
@@ -114,8 +117,9 @@ def loss_fn_with_skip(
         qkv_dict = None
 
     logits = logits.astype(jnp.float32)
-    log_probs = jax.nn.log_softmax(logits, axis=-1)
-    losses = -jnp.take_along_axis(log_probs, y[..., None], axis=-1).squeeze(-1)
+    losses = cross_entropy_lib.select_cross_entropy(
+        logits, y, model.use_fixed_softmax
+    )
     losses = losses[:, :-1]
 
     weights = _build_loss_skip_weights(
@@ -166,8 +170,9 @@ def loss_fn_z_loss_with_skip(
         qkv_dict = None
 
     logits_f32 = logits.astype(jnp.float32)
-    log_probs = jax.nn.log_softmax(logits_f32, axis=-1)
-    losses = -jnp.take_along_axis(log_probs, y[..., None], axis=-1).squeeze(-1)
+    losses = cross_entropy_lib.select_cross_entropy(
+        logits_f32, y, model.use_fixed_softmax
+    )
     losses = losses[:, :-1]
 
     weights = _build_loss_skip_weights(
@@ -220,8 +225,9 @@ def loss_fn_with_soft_cap(
         qkv_dict = None
 
     logits = logits.astype(jnp.float32)
-    log_probs = jax.nn.log_softmax(logits, axis=-1)
-    losses = -jnp.take_along_axis(log_probs, y[..., None], axis=-1).squeeze(-1)
+    losses = cross_entropy_lib.select_cross_entropy(
+        logits, y, model.use_fixed_softmax
+    )
     losses = losses[:, :-1]
 
     capped_losses = _apply_tanh_soft_cap(losses, soft_cap)
@@ -263,8 +269,9 @@ def loss_fn_z_loss_with_soft_cap(
         qkv_dict = None
 
     logits_f32 = logits.astype(jnp.float32)
-    log_probs = jax.nn.log_softmax(logits_f32, axis=-1)
-    losses = -jnp.take_along_axis(log_probs, y[..., None], axis=-1).squeeze(-1)
+    losses = cross_entropy_lib.select_cross_entropy(
+        logits_f32, y, model.use_fixed_softmax
+    )
     losses = losses[:, :-1]
 
     capped_losses = _apply_tanh_soft_cap(losses, soft_cap)

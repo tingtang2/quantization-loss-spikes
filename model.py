@@ -108,6 +108,7 @@ class TransformerDecoder(nnx.Module):
             jax.lax.Precision.HIGHEST if self.lm_head_is_fp32 else None
         )
         self.lm_head_input_grad_fp32 = bool(getattr(c, "lm_head_input_grad_fp32", False))
+        self.use_fixed_softmax = bool(getattr(c, "use_fixed_softmax", False))
         self.final_hidden_mean_centering = bool(getattr(c, "final_hidden_mean_centering", False))
         self.final_hidden_mean_centering_coeff = float(getattr(c, "alpha", 1.0))
         self.lm_head_oblique_learn_target_rms = bool(getattr(c, "lm_head_oblique_learn_target_rms", False))
