@@ -3,7 +3,9 @@
 This repository accompanies *The Role of Quantization in Loss Spikes*, which
 studies how finite-precision computation in the LM head contributes to delayed
 loss spikes. The paper also compares AdamW with SGD with momentum for optimizing
-the LM head. Read the paper on [arXiv](https://arxiv.org/abs/2610.38277).
+the LM head.
+
+[![arXiv](https://img.shields.io/badge/arXiv-2610.38277-b31b1b.svg)](https://arxiv.org/abs/2610.38277)
 
 The repository includes the training implementation, configurable model and
 optimizer settings, precision controls for the LM head, and tools for measuring
